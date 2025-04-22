@@ -149,8 +149,8 @@ class MetadataWorker(QThread):
 
 class FileClientManager:
     def __init__(self):
-        self.SERVER_IP = "192.168.174.10"  # Default server IP
-        self.PORT = 5000
+        self.SERVER_IP = "172.21.12.181"  # Default server IP
+        self.PORT = 8000
         self.BUFFER_SIZE = 4096
         self.SEPARATOR = "<SEPARATOR>"
         

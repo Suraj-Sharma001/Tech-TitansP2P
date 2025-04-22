@@ -12,7 +12,7 @@ class ServerSignals(QObject):
 
 class FileServerManager:
     def __init__(self):
-        self.PORT = 5050
+        self.PORT = 8080
         self.SERVER = socket.gethostbyname(socket.gethostname())  # Get local IP
         self.BUFFER_SIZE = 4096
         self.SEPARATOR = "<SEPARATOR>"

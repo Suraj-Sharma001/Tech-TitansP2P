@@ -78,7 +78,7 @@ class P2PFileShareApp(QMainWindow):
         self.PORT = 5050
         self.FORMAT = 'utf-8'
         self.DISCONNECT_MESSAGE = "DISCONNECT"
-        self.SERVER = "192.168.234.191"
+        self.SERVER = "172.21.12.181"
         self.ADDR = (self.SERVER, self.PORT)
         self.my_ip = socket.gethostbyname(socket.gethostname())
 
@@ -610,3 +610,9 @@ class P2PFileShareApp(QMainWindow):
             pass
         
         event.accept()
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = P2PFileShareApp()
+    window.show()
+    sys.exit(app.exec_())
