@@ -63,22 +63,25 @@ Enable faculty to distribute code files, datasets, and messages to students in r
 
 ### Installation
 
-```bash
+```
 git clone https://github.com/yourusername/p2p-lab-sharing.git
 cd p2p-lab-sharing
 pip install -r requirements.txt
+```
 
-Running the App
+
+▶️ Running the App
 🧑‍🏫 Teacher
 
+```
 python start.py
 # Select "Teacher Mode"
 
+```
 🧑‍🎓 Student
+
+```
 python start.py
 # Select "Student Mode"
 
-🛡️ Security
-Only devices with a predefined secret key or signature can start a session.
-
-File integrity is verified through checksums on each chunk.
+```
