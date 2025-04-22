@@ -10,8 +10,12 @@ from file_server import FileServerManager
 import os
 from pathlib import Path
 
+flag = True
 CHUNK_SIZE = 1024 * 1024  
 COUNTER = 1;
+
+on_server = []
+
 class P2PFileShareApp(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -290,8 +294,8 @@ class P2PFileShareApp(QMainWindow):
             self.client.send(message)
         except Exception as e:
             self.chat_display.append(f"[ERROR] Could not send message: {e}")
-    
 
+    my_ip = socket.gethostbyname(socket.gethostbyname)
     def file_chunks(counter, file_path):
         folder = os.path.dirname(file_path)
         filename = os.path.basename(file_path)
@@ -341,7 +345,12 @@ class P2PFileShareApp(QMainWindow):
                             self.check_file()
                     else:
                         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
+                        if(flag): 
+                            self.chat_display.append(socket.gethostname(socket.gethostbyname)())
+                            flag = False
                         self.chat_display.append(f"[{timestamp}] Peer: {msg}")
+                        if(socket.inet_aton(msg)):
+                                COUNTER+=1
             except:
                 self.chat_display.append("[ERROR] Connection lost.")
                 break
