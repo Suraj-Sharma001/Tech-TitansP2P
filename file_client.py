@@ -71,7 +71,7 @@ class DownloadWorker(QThread):
 class FileClientManager:
     def __init__(self):
         self.SERVER_IP = "192.168.174.10"  # Default server IP
-        self.PORT = 5000
+        self.PORT = 5050
         self.BUFFER_SIZE = 4096
         self.SEPARATOR = "<SEPARATOR>"
         
