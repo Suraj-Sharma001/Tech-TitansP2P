@@ -295,7 +295,7 @@ class P2PFileShareApp(QMainWindow):
         except Exception as e:
             self.chat_display.append(f"[ERROR] Could not send message: {e}")
 
-    my_ip = socket.gethostbyname(socket.gethostbyname)
+    my_ip = socket.gethostbyname(socket.gethostname())
     def file_chunks(counter, file_path):
         folder = os.path.dirname(file_path)
         filename = os.path.basename(file_path)
@@ -346,7 +346,7 @@ class P2PFileShareApp(QMainWindow):
                     else:
                         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
                         if(flag): 
-                            self.chat_display.append(socket.gethostname(socket.gethostbyname)())
+                            self.chat_display.append(socket.gethostbyname(socket.gethostname)())
                             flag = False
                         self.chat_display.append(f"[{timestamp}] Peer: {msg}")
                         if(socket.inet_aton(msg)):
