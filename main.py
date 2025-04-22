@@ -7,10 +7,16 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
 from PyQt5.QtCore import Qt, QDateTime, pyqtSignal, QObject
 from file_client import FileClientManager
 from file_server import FileServerManager
+import os
+from pathlib import Path
 
+CHUNK_SIZE = 1024 * 1024  
+COUNTER = 1;
 class P2PFileShareApp(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.file_sharing = False
+        self.file_sharing_name = None
         self.setWindowTitle("P2P File Sharing System")
         self.resize(900, 600)
         self.setMinimumSize(800, 500)
@@ -202,7 +208,8 @@ class P2PFileShareApp(QMainWindow):
         if success:
             file_name = file_path.split('/')[-1]
             self.status_bar.showMessage(f"File uploaded: {file_name}")
-            
+            self.file_sharing = True;
+            self.file_sharing_name = file_name
             timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
             self.chat_display.append(f"[{timestamp}] You: Uploaded file '{file_name}'")
             
@@ -284,6 +291,40 @@ class P2PFileShareApp(QMainWindow):
         except Exception as e:
             self.chat_display.append(f"[ERROR] Could not send message: {e}")
     
+
+    def file_chunks(counter, file_path):
+        folder = os.path.dirname(file_path)
+        filename = os.path.basename(file_path)
+        temp_dir = os.path.join(folder, "temp")
+
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+
+        with open(file_path, "rb") as f:
+            chunk_num = 0
+            while True:
+                chunk = f.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                chunk_filename = f"{filename}_chunk_{chunk_num}"
+                chunk_path = os.path.join(temp_dir, chunk_filename)
+                with open(chunk_path, "wb") as chunk_file:
+                    chunk_file.write(chunk)
+                chunk_num += 1
+        
+    def check_file(self):
+        global COUNTER
+        shared_folders = ["shared_files/send", "shared_files/Received"]
+        for folder in shared_folders:
+            if os.path.exists(folder):
+                files = os.listdir(folder)
+                if files:
+                    for file in files:
+                        file_path = os.path.join(folder, file)
+                        if os.path.isfile(file_path):
+                            COUNTER += 1
+                            self.file_chunks(COUNTER, file_path)
+        
     def receive_messages(self):
         while True:
             try:
@@ -296,6 +337,8 @@ class P2PFileShareApp(QMainWindow):
                         self.chat_display.append(f"[{timestamp}] A new file has been shared: {filename}")
                         # Refresh file list
                         self.refresh_file_list()
+                        if self.file_sharing:
+                            self.check_file()
                     else:
                         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
                         self.chat_display.append(f"[{timestamp}] Peer: {msg}")
@@ -351,4 +394,3 @@ if __name__ == "__main__":
     window.show()
     
     sys.exit(app.exec_())
-    
