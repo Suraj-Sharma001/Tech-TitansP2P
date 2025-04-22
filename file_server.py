@@ -53,6 +53,13 @@ class FileServerManager:
     def stop_server(self):
         self.server_running = False
         self.signals.update_log.emit("Server stopped")
+
+    def get_shared_files(self):
+        """Return a list of files that are currently being shared by this server"""
+        if not hasattr(self, 'shared_files'):
+            self.shared_files = {}
+
+        return list(self.shared_files.keys())
     
     def run_server(self):
         try:

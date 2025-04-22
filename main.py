@@ -4,6 +4,7 @@ import threading
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QSplitter, QLabel, QLineEdit, QPushButton, QTextEdit, QListWidget,
                              QGroupBox, QFileDialog, QStatusBar, QProgressBar, QMessageBox)
+
 from PyQt5.QtCore import Qt, QDateTime, pyqtSignal, QObject
 from file_client import FileClientManager
 from file_server import FileServerManager
@@ -25,7 +26,6 @@ class P2PFileShareApp(QMainWindow):
         self.resize(900, 600)
         self.setMinimumSize(800, 500)
         
-        # Initialize file managers
         self.file_client = FileClientManager()
         self.file_server = FileServerManager()
         
@@ -77,18 +77,26 @@ class P2PFileShareApp(QMainWindow):
         except Exception as e:
             self.status_bar.showMessage(f"Connection failed: {e}")
             
-        # Connect signals from file managers
         self.file_client.signals.progress_update.connect(self.update_download_progress)
         self.file_client.signals.download_complete.connect(self.download_completed)
         self.file_client.signals.error.connect(self.show_file_error)
         
         self.file_server.signals.update_log.connect(self.log_server_message)
+
+    def share_file(self):
+        if not self.selected_file_edit.text():
+            self.status_bar.showMessage("No file selected to share.")
+            return
+
+        filename = self.selected_file_edit.text().split("/")[-1]
+        self.send_to_server(f"FILESHARE:{filename}")
+        self.status_bar.showMessage(f"File '{filename}' shared with peers")
+
         
     def create_file_section(self):
         file_group = QGroupBox("P2P File Operations: ")
         layout = QVBoxLayout()
         
-        # File selection area
         file_selection_layout = QHBoxLayout()
         file_selection_layout.addWidget(QLabel("Selected File:"))
         
@@ -102,7 +110,6 @@ class P2PFileShareApp(QMainWindow):
         
         layout.addLayout(file_selection_layout)
         
-        # Server controls
         server_layout = QHBoxLayout()
         self.server_status_label = QLabel("Server: Not Running")
         server_layout.addWidget(self.server_status_label)
@@ -113,7 +120,6 @@ class P2PFileShareApp(QMainWindow):
         
         layout.addLayout(server_layout)
         
-        # File operations area
         file_ops_layout = QHBoxLayout()
         
         self.upload_btn = QPushButton("Upload File")
@@ -140,14 +146,13 @@ class P2PFileShareApp(QMainWindow):
         self.files_list.itemDoubleClicked.connect(self.file_selected)
         layout.addWidget(self.files_list)
         
-        # Transfer status area
         transfer_layout = QHBoxLayout()
         transfer_layout.addWidget(QLabel("Transfer Status:"))
         self.transfer_status = QLabel("No active transfer")
         transfer_layout.addWidget(self.transfer_status)
         layout.addLayout(transfer_layout)
         
-        # Add a log area for file operations
+ 
         layout.addWidget(QLabel("File Operation Log:"))
         self.file_log = QListWidget()
         self.file_log.setMaximumHeight(100)
@@ -184,7 +189,6 @@ class P2PFileShareApp(QMainWindow):
         chat_group.setLayout(layout)
         return chat_group
     
-    # File operations methods
     def select_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Select File to Share", "", "All Files (*)")
         if file_name:
@@ -217,47 +221,56 @@ class P2PFileShareApp(QMainWindow):
             timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
             self.chat_display.append(f"[{timestamp}] You: Uploaded file '{file_name}'")
             
-            # Refresh local file list
             self.refresh_file_list()
         else:
             self.status_bar.showMessage("Failed to upload file")
     
-    def share_file(self):
-        if not self.selected_file_edit.text():
-            self.status_bar.showMessage("No file selected to share")
-            return
-            
-        file_name = self.selected_file_edit.text().split('/')[-1]
-        success = self.file_server.add_file(self.selected_file_edit.text())
-        
-        if success:
-            self.status_bar.showMessage(f"File shared: {file_name}")
-            timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
-            self.chat_display.append(f"[{timestamp}] You: Shared file '{file_name}' with the network")
-            
-            # Announce file share in chat
-            share_msg = f"FILESHARE:{file_name}"
-            self.send_to_server(share_msg)
-            
-            # Refresh local file list
-            self.refresh_file_list()
-        else:
-            self.status_bar.showMessage("Failed to share file")
+    def get_shared_files(self):
+        """Return a list of files that are currently being shared by this server"""
+        try:
+            if os.path.exists(self.files_dir):
+                return [f for f in os.listdir(self.files_dir) if os.path.isfile(os.path.join(self.files_dir, f))]
+            return []
+        except Exception as e:
+            self.signals.update_log.emit(f"Error getting shared files: {str(e)}")
+            return []
     
     def file_selected(self, item):
         self.status_bar.showMessage(f"Selected: {item.text()}")
     
     def refresh_file_list(self):
         self.files_list.clear()
-        files = self.file_client.get_file_list()
         
-        if files:
-            if isinstance(files, list):
-                for file in files:
-                    self.files_list.addItem(file)
-            else:
-                self.log_file_message(files)  # It's an error message
-    
+        # Get local files from the file server's shared directory
+        local_files = self.file_server.get_shared_files()
+        self.log_file_message(f"Local files found: {len(local_files) if local_files else 0}")
+        
+        # Get remote files from other peers
+        remote_files = self.file_client.get_file_list()
+        if isinstance(remote_files, str):  # It's an error message
+            self.log_file_message(remote_files)
+            remote_files = []
+        else:
+            self.log_file_message(f"Remote files found: {len(remote_files) if remote_files else 0}")
+        
+        # Combine both lists, avoiding duplicates
+        all_files = set()
+        
+        if local_files:
+            for file in local_files:
+                all_files.add(file)
+        
+        if remote_files:
+            for file in remote_files:
+                all_files.add(file)
+        
+        # Add all files to the list widget
+        for file in sorted(all_files):
+            self.files_list.addItem(file)
+        
+        if not all_files:
+            self.log_file_message("No shared files available")
+            
     def download_file(self):
         selected_items = self.files_list.selectedItems()
         
@@ -267,15 +280,12 @@ class P2PFileShareApp(QMainWindow):
             
         filename = selected_items[0].text()
         
-        # Update status
         self.transfer_status.setText(f"Downloading: {filename}")
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
         
-        # Start download
         self.file_client.download_file(filename)
     
-    # Chat methods
     def send_message(self):
         message = self.message_input.text().strip()
         if message:
@@ -330,32 +340,37 @@ class P2PFileShareApp(QMainWindow):
                             self.file_chunks(COUNTER, file_path)
         
     def receive_messages(self):
+        global flag
         while True:
             try:
                 msg = self.client.recv(2048).decode(self.FORMAT)
                 if msg:
-                    # Check if it's a file share announcement
                     if msg.startswith("FILESHARE:"):
                         filename = msg.split(":", 1)[1]
                         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
                         self.chat_display.append(f"[{timestamp}] A new file has been shared: {filename}")
-                        # Refresh file list
                         self.refresh_file_list()
                         if self.file_sharing:
                             self.check_file()
                     else:
                         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
-                        if(flag): 
-                            self.chat_display.append(socket.gethostbyname(socket.gethostname)())
-                            flag = False
+                        if flag:
+                            try:
+                                self.chat_display.append(socket.gethostbyname(socket.gethostname()))
+                                flag = False
+                            except Exception as e:
+                                self.chat_display.append(f"Error getting IP: {e}")
                         self.chat_display.append(f"[{timestamp}] Peer: {msg}")
-                        if(socket.inet_aton(msg)):
-                                COUNTER+=1
-            except:
-                self.chat_display.append("[ERROR] Connection lost.")
+                        try:
+                            socket.inet_aton(msg)
+                            global COUNTER
+                            COUNTER += 1
+                        except:
+                            pass
+            except Exception as e:
+                self.chat_display.append(f"[ERROR] Connection lost: {str(e)}")
                 break
-    
-    # Signal handlers
+
     def update_download_progress(self, value):
         self.progress_bar.setValue(value)
     
