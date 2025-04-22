@@ -1,6 +1,3 @@
-# Updates to main.py
-
-# Add/modify imports
 import sys
 import socket
 import threading
@@ -15,8 +12,8 @@ from PyQt5.QtCore import Qt, QDateTime, pyqtSignal, QObject
 from file_client import FileClientManager
 from file_server import FileServerManager
 
-CHUNK_SIZE = 1024 * 1024  # 1MB chunks
-PEERS = []  # Connected peers
+CHUNK_SIZE = 1024 * 1024
+PEERS = []
 
 class P2PFileShareApp(QMainWindow):
     def __init__(self):
@@ -27,16 +24,13 @@ class P2PFileShareApp(QMainWindow):
         self.resize(900, 600)
         self.setMinimumSize(800, 500)
         
-        # Initialize file managers
         self.file_client = FileClientManager()
         self.file_server = FileServerManager()
         
-        # Initialize chunk management
         self.chunk_dir = "./chunks"
         if not os.path.exists(self.chunk_dir):
             os.makedirs(self.chunk_dir)
         
-        # Initialize metadata storage
         self.metadata_dir = "./metadata"
         if not os.path.exists(self.metadata_dir):
             os.makedirs(self.metadata_dir)
@@ -90,7 +84,6 @@ class P2PFileShareApp(QMainWindow):
         except Exception as e:
             self.status_bar.showMessage(f"Connection failed: {e}")
             
-        # Connect signals from file managers
         self.file_client.signals.progress_update.connect(self.update_download_progress)
         self.file_client.signals.download_complete.connect(self.download_completed)
         self.file_client.signals.error.connect(self.show_file_error)
@@ -98,11 +91,9 @@ class P2PFileShareApp(QMainWindow):
         self.file_server.signals.update_log.connect(self.log_server_message)
         
     def create_file_section(self):
-        # Same as original code
         file_group = QGroupBox("P2P File Operations: ")
         layout = QVBoxLayout()
-        
-        # File selection area
+       
         file_selection_layout = QHBoxLayout()
         file_selection_layout.addWidget(QLabel("Selected File:"))
         
@@ -115,8 +106,7 @@ class P2PFileShareApp(QMainWindow):
         file_selection_layout.addWidget(self.select_file_btn)
         
         layout.addLayout(file_selection_layout)
-        
-        # Server controls
+       
         server_layout = QHBoxLayout()
         self.server_status_label = QLabel("Server: Not Running")
         server_layout.addWidget(self.server_status_label)
@@ -126,8 +116,7 @@ class P2PFileShareApp(QMainWindow):
         server_layout.addWidget(self.toggle_server_btn)
         
         layout.addLayout(server_layout)
-        
-        # File operations area
+       
         file_ops_layout = QHBoxLayout()
         
         self.upload_btn = QPushButton("Upload File")
@@ -154,14 +143,12 @@ class P2PFileShareApp(QMainWindow):
         self.files_list.itemDoubleClicked.connect(self.file_selected)
         layout.addWidget(self.files_list)
         
-        # Transfer status area
         transfer_layout = QHBoxLayout()
         transfer_layout.addWidget(QLabel("Transfer Status:"))
         self.transfer_status = QLabel("No active transfer")
         transfer_layout.addWidget(self.transfer_status)
         layout.addLayout(transfer_layout)
-        
-        # Add a log area for file operations
+       
         layout.addWidget(QLabel("File Operation Log:"))
         self.file_log = QListWidget()
         self.file_log.setMaximumHeight(100)
@@ -171,7 +158,6 @@ class P2PFileShareApp(QMainWindow):
         return file_group
         
     def create_chat_section(self):
-        # Same as original code
         chat_group = QGroupBox("Chat")
         layout = QVBoxLayout()
         
@@ -199,7 +185,6 @@ class P2PFileShareApp(QMainWindow):
         chat_group.setLayout(layout)
         return chat_group
     
-    # Updated file operations methods
     def select_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Select File to Share", "", "All Files (*)")
         if file_name:
@@ -223,11 +208,9 @@ class P2PFileShareApp(QMainWindow):
             
         file_path = self.selected_file_edit.text()
         filename = os.path.basename(file_path)
-        
-        # Create chunks and metadata
+   
         self.create_chunks(file_path)
-        
-        # Add file reference to server
+      
         success = self.file_server.add_file_reference(filename)
         
         if success:
@@ -236,12 +219,10 @@ class P2PFileShareApp(QMainWindow):
             self.file_sharing_name = filename
             timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
             self.chat_display.append(f"[{timestamp}] You: Uploaded file '{filename}' in chunks")
-            
-            # Announce file availability to network
+           
             share_msg = f"FILESHARE:{filename}"
             self.send_to_server(share_msg)
-            
-            # Refresh local file list
+           
             self.refresh_file_list()
         else:
             self.status_bar.showMessage("Failed to upload file")
@@ -250,34 +231,28 @@ class P2PFileShareApp(QMainWindow):
         """Create chunks from a file and generate metadata"""
         filename = os.path.basename(file_path)
         file_size = os.path.getsize(file_path)
-        
-        # Create a directory for this file's chunks
+       
         file_chunk_dir = os.path.join(self.chunk_dir, self.get_file_hash(filename))
         if not os.path.exists(file_chunk_dir):
             os.makedirs(file_chunk_dir)
         
-        # Initialize metadata
         chunks = []
         chunk_index = 0
-        
-        # Read and split the file
+      
         with open(file_path, "rb") as f:
             while True:
                 chunk_data = f.read(CHUNK_SIZE)
                 if not chunk_data:
                     break
                 
-                # Generate chunk hash for integrity checking
                 chunk_hash = hashlib.md5(chunk_data).hexdigest()
                 
-                # Save chunk to file
                 chunk_filename = f"{chunk_index}_{chunk_hash}"
                 chunk_path = os.path.join(file_chunk_dir, chunk_filename)
                 
                 with open(chunk_path, "wb") as chunk_file:
                     chunk_file.write(chunk_data)
                 
-                # Add to metadata
                 chunks.append({
                     "index": chunk_index,
                     "hash": chunk_hash,
@@ -285,18 +260,16 @@ class P2PFileShareApp(QMainWindow):
                 })
                 
                 chunk_index += 1
-        
-        # Create metadata file
+   
         metadata = {
             "filename": filename,
             "filesize": file_size,
             "chunks": chunks,
             "chunk_count": chunk_index,
             "owner": self.my_ip,
-            "peers": [self.my_ip]  # Initially, we're the only peer with chunks
+            "peers": [self.my_ip] 
         }
         
-        # Save metadata
         metadata_path = os.path.join(self.metadata_dir, f"{self.get_file_hash(filename)}.json")
         with open(metadata_path, "w") as mf:
             json.dump(metadata, mf)
@@ -316,22 +289,18 @@ class P2PFileShareApp(QMainWindow):
         file_path = self.selected_file_edit.text()
         filename = os.path.basename(file_path)
         
-        # Create chunks and metadata
         self.create_chunks(file_path)
         
-        # Add file reference to server
         success = self.file_server.add_file_reference(filename)
         
         if success:
             self.status_bar.showMessage(f"File shared in chunks: {filename}")
             timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
             self.chat_display.append(f"[{timestamp}] You: Shared file '{filename}' with the network")
-            
-            # Announce file share in chat
+          
             share_msg = f"FILESHARE:{filename}"
             self.send_to_server(share_msg)
             
-            # Refresh local file list
             self.refresh_file_list()
         else:
             self.status_bar.showMessage("Failed to share file")
@@ -342,7 +311,6 @@ class P2PFileShareApp(QMainWindow):
     def refresh_file_list(self):
         self.files_list.clear()
         
-        # Get files from local metadata directory
         if os.path.exists(self.metadata_dir):
             for metadata_file in os.listdir(self.metadata_dir):
                 if metadata_file.endswith('.json'):
@@ -353,11 +321,9 @@ class P2PFileShareApp(QMainWindow):
                     except:
                         pass
         
-        # Also get files from network
         network_files = self.file_client.get_file_list()
         if network_files and isinstance(network_files, list):
             for file in network_files:
-                # Add only if not already in the list
                 found = False
                 for i in range(self.files_list.count()):
                     if self.files_list.item(i).text() == file:
@@ -376,20 +342,16 @@ class P2PFileShareApp(QMainWindow):
             
         filename = selected_items[0].text()
         
-        # Check if we have metadata for this file
         file_hash = self.get_file_hash(filename)
         metadata_path = os.path.join(self.metadata_dir, f"{file_hash}.json")
         
-        # Update status
         self.transfer_status.setText(f"Downloading: {filename}")
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
         
         if os.path.exists(metadata_path):
-            # We have metadata - use multi-peer download
             threading.Thread(target=self.download_from_peers, args=(filename,), daemon=True).start()
         else:
-            # Try to get metadata from a peer first
             self.file_client.request_metadata(filename)
             self.status_bar.showMessage(f"Requesting metadata for {filename}")
     
@@ -399,16 +361,13 @@ class P2PFileShareApp(QMainWindow):
         metadata_path = os.path.join(self.metadata_dir, f"{file_hash}.json")
         
         try:
-            # Load metadata
             with open(metadata_path, 'r') as f:
                 metadata = json.load(f)
-            
-            # Ensure chunk directory exists
+
             file_chunk_dir = os.path.join(self.chunk_dir, file_hash)
             if not os.path.exists(file_chunk_dir):
                 os.makedirs(file_chunk_dir)
             
-            # Download each chunk from available peers
             chunk_count = metadata['chunk_count']
             total_downloaded = 0
             
@@ -418,18 +377,16 @@ class P2PFileShareApp(QMainWindow):
                 chunk_filename = f"{chunk_index}_{chunk_hash}"
                 chunk_path = os.path.join(file_chunk_dir, chunk_filename)
                 
-                # Skip if we already have this chunk
                 if os.path.exists(chunk_path):
                     total_downloaded += 1
                     progress = int((total_downloaded / chunk_count) * 100)
                     self.signals.progress_update.emit(progress)
                     continue
-                
-                # Find a peer with this chunk
+
                 found_peer = False
                 for peer in metadata.get('peers', []):
                     if peer == self.my_ip:
-                        continue  # Skip ourselves
+                        continue
                     
                     success = self.file_client.download_chunk(
                         peer, 
@@ -450,7 +407,6 @@ class P2PFileShareApp(QMainWindow):
                     self.signals.error.emit(f"Could not find a peer with chunk {chunk_index}")
                     return
             
-            # Reassemble file
             output_path = self.reassemble_file(metadata)
             if output_path:
                 self.signals.download_complete.emit(output_path)
@@ -467,18 +423,14 @@ class P2PFileShareApp(QMainWindow):
             file_hash = self.get_file_hash(filename)
             file_chunk_dir = os.path.join(self.chunk_dir, file_hash)
             
-            # Ensure download directory exists
             download_dir = "./downloaded_files"
             if not os.path.exists(download_dir):
                 os.makedirs(download_dir)
             
             output_path = os.path.join(download_dir, filename)
             
-            # Open output file
             with open(output_path, 'wb') as outfile:
-                # Process each chunk in order
                 for i in range(metadata['chunk_count']):
-                    # Find the chunk file
                     chunk_info = None
                     for chunk in metadata['chunks']:
                         if chunk['index'] == i:
@@ -494,7 +446,6 @@ class P2PFileShareApp(QMainWindow):
                     if not os.path.exists(chunk_path):
                         raise Exception(f"Missing chunk file: {chunk_filename}")
                     
-                    # Read and write chunk
                     with open(chunk_path, 'rb') as infile:
                         outfile.write(infile.read())
             
@@ -503,7 +454,6 @@ class P2PFileShareApp(QMainWindow):
             self.log_file_message(f"Reassembly error: {str(e)}")
             return None
     
-    # Chat methods
     def send_message(self):
         message = self.message_input.text().strip()
         if message:
@@ -531,31 +481,27 @@ class P2PFileShareApp(QMainWindow):
                 if msg:
                     timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
 
-                    # If it's a file share message
                     if msg.startswith("FILESHARE:"):
                         filename = msg.split(":", 1)[1]
                         self.chat_display.append(f"[{timestamp}] A new file has been shared: {filename}")
                         self.refresh_file_list()
                     
-                    # If it's a metadata request
                     elif msg.startswith("METADATA_REQUEST:"):
                         filename = msg.split(":", 1)[1]
                         self.handle_metadata_request(filename)
                         
-                    # If it's a metadata response
                     elif msg.startswith("METADATA_RESPONSE:"):
                         _, sender, filename = msg.split(":", 2)
                         self.chat_display.append(f"[{timestamp}] Received metadata for {filename} from {sender}")
                         self.file_client.fetch_metadata(sender, filename)
                         
-                    # If it's an IP address
                     else:
                         try:
                             socket.inet_aton(msg)
                             if msg not in PEERS:
                                 PEERS.append(msg)
                                 self.chat_display.append(f"[{timestamp}] New peer connected with IP: {msg}")
-                            continue  # Don't treat as chat message
+                            continue
                         except socket.error:
                             pass
                         
@@ -570,11 +516,9 @@ class P2PFileShareApp(QMainWindow):
         metadata_path = os.path.join(self.metadata_dir, f"{file_hash}.json")
         
         if os.path.exists(metadata_path):
-            # We have the metadata - announce availability
             response = f"METADATA_RESPONSE:{self.my_ip}:{filename}"
             self.send_to_server(response)
     
-    # Signal handlers
     def update_download_progress(self, value):
         self.progress_bar.setValue(value)
     
@@ -599,11 +543,9 @@ class P2PFileShareApp(QMainWindow):
         self.file_log.scrollToBottom()
     
     def closeEvent(self, event):
-        # Stop server if running
         if self.file_server.server_running:
             self.file_server.stop_server()
         
-        # Close chat connection
         try:
             self.send_to_server(self.DISCONNECT_MESSAGE)
         except:
@@ -613,6 +555,13 @@ class P2PFileShareApp(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+
+    app.setStyle("Fusion")
+    with open("style.qss", "r") as f:
+        style = f.read()
+        app.setStyleSheet(style) 
+
     window = P2PFileShareApp()
     window.show()
     sys.exit(app.exec_())
+

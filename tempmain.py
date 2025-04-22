@@ -16,7 +16,6 @@ class P2PFileShareApp(QMainWindow):
         self.resize(900, 600)
         self.setMinimumSize(800, 500)
         
-        # Initialize file managers
         self.file_client = FileClientManager()
         self.file_server = FileServerManager()
         
@@ -68,7 +67,6 @@ class P2PFileShareApp(QMainWindow):
         except Exception as e:
             self.status_bar.showMessage(f"Connection failed: {e}")
             
-        # Connect signals from file managers
         self.file_client.signals.progress_update.connect(self.update_download_progress)
         self.file_client.signals.download_complete.connect(self.download_completed)
         self.file_client.signals.error.connect(self.show_file_error)
@@ -79,7 +77,6 @@ class P2PFileShareApp(QMainWindow):
         file_group = QGroupBox("P2P File Operations: ")
         layout = QVBoxLayout()
         
-        # File selection area
         file_selection_layout = QHBoxLayout()
         file_selection_layout.addWidget(QLabel("Selected File:"))
         
@@ -93,7 +90,6 @@ class P2PFileShareApp(QMainWindow):
         
         layout.addLayout(file_selection_layout)
         
-        # Server controls
         server_layout = QHBoxLayout()
         self.server_status_label = QLabel("Server: Not Running")
         server_layout.addWidget(self.server_status_label)
@@ -104,7 +100,6 @@ class P2PFileShareApp(QMainWindow):
         
         layout.addLayout(server_layout)
         
-        # File operations area
         file_ops_layout = QHBoxLayout()
         
         self.upload_btn = QPushButton("Upload File")
@@ -131,14 +126,12 @@ class P2PFileShareApp(QMainWindow):
         self.files_list.itemDoubleClicked.connect(self.file_selected)
         layout.addWidget(self.files_list)
         
-        # Transfer status area
         transfer_layout = QHBoxLayout()
         transfer_layout.addWidget(QLabel("Transfer Status:"))
         self.transfer_status = QLabel("No active transfer")
         transfer_layout.addWidget(self.transfer_status)
         layout.addLayout(transfer_layout)
         
-        # Add a log area for file operations
         layout.addWidget(QLabel("File Operation Log:"))
         self.file_log = QListWidget()
         self.file_log.setMaximumHeight(100)
@@ -175,7 +168,6 @@ class P2PFileShareApp(QMainWindow):
         chat_group.setLayout(layout)
         return chat_group
     
-    # File operations methods
     def select_file(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Select File to Share", "", "All Files (*)")
         if file_name:
@@ -207,7 +199,6 @@ class P2PFileShareApp(QMainWindow):
             timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
             self.chat_display.append(f"[{timestamp}] You: Uploaded file '{file_name}'")
             
-            # Refresh local file list
             self.refresh_file_list()
         else:
             self.status_bar.showMessage("Failed to upload file")
@@ -225,11 +216,9 @@ class P2PFileShareApp(QMainWindow):
             timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
             self.chat_display.append(f"[{timestamp}] You: Shared file '{file_name}' with the network")
             
-            # Announce file share in chat
             share_msg = f"FILESHARE:{file_name}"
             self.send_to_server(share_msg)
             
-            # Refresh local file list
             self.refresh_file_list()
         else:
             self.status_bar.showMessage("Failed to share file")
@@ -257,15 +246,12 @@ class P2PFileShareApp(QMainWindow):
             
         filename = selected_items[0].text()
         
-        # Update status
         self.transfer_status.setText(f"Downloading: {filename}")
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
         
-        # Start download
         self.file_client.download_file(filename)
     
-    # Chat methods
     def send_message(self):
         message = self.message_input.text().strip()
         if message:
@@ -290,12 +276,10 @@ class P2PFileShareApp(QMainWindow):
             try:
                 msg = self.client.recv(2048).decode(self.FORMAT)
                 if msg:
-                    # Check if it's a file share announcement
                     if msg.startswith("FILESHARE:"):
                         filename = msg.split(":", 1)[1]
                         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
                         self.chat_display.append(f"[{timestamp}] A new file has been shared: {filename}")
-                        # Refresh file list
                         self.refresh_file_list()
                     else:
                         timestamp = QDateTime.currentDateTime().toString("hh:mm:ss")
@@ -303,8 +287,7 @@ class P2PFileShareApp(QMainWindow):
             except:
                 self.chat_display.append("[ERROR] Connection lost.")
                 break
-    
-    # Signal handlers
+
     def update_download_progress(self, value):
         self.progress_bar.setValue(value)
     
@@ -329,11 +312,9 @@ class P2PFileShareApp(QMainWindow):
         self.file_log.scrollToBottom()
     
     def closeEvent(self, event):
-        # Stop server if running
         if self.file_server.server_running:
             self.file_server.stop_server()
         
-        # Close chat connection
         try:
             self.send_to_server(self.DISCONNECT_MESSAGE)
         except:
@@ -352,3 +333,4 @@ if __name__ == "__main__":
     window.show()
     
     sys.exit(app.exec_())
+    

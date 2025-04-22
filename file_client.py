@@ -1,4 +1,3 @@
-# file_client.py
 import socket
 import os
 import threading
@@ -21,7 +20,7 @@ class ChunkDownloadWorker(QThread):
         self.chunk_hash = chunk_hash
         self.output_dir = output_dir
         self.signals = signals
-        self.port = 5050  # Default chunk transfer port
+        self.port = 5050 
         self.separator = "<SEPARATOR>"
         self.buffer_size = 4096
         
@@ -29,11 +28,9 @@ class ChunkDownloadWorker(QThread):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((self.peer_ip, self.port))
-            
-            # Request specific chunk
+      
             s.send(f"GET_CHUNK{self.separator}{self.filename}{self.separator}{self.chunk_index}".encode())
-            
-            # Receive chunk info
+          
             response = s.recv(self.buffer_size).decode()
             
             if response.startswith("ERROR"):
@@ -44,10 +41,8 @@ class ChunkDownloadWorker(QThread):
             _, chunk_size = response.split(self.separator)
             chunk_size = int(chunk_size)
             
-            # Send ready signal
             s.send("READY".encode())
             
-            # Receive chunk data
             chunk_filename = f"{self.chunk_index}_{self.chunk_hash}"
             chunk_path = os.path.join(self.output_dir, chunk_filename)
             received_bytes = 0
@@ -63,13 +58,12 @@ class ChunkDownloadWorker(QThread):
                     
             s.close()
             
-            # Verify integrity
             with open(chunk_path, "rb") as f:
                 data = f.read()
                 calculated_hash = hashlib.md5(data).hexdigest()
                 
             if calculated_hash != self.chunk_hash:
-                os.remove(chunk_path)  # Remove corrupted chunk
+                os.remove(chunk_path)  
                 return False
                 
             return True
@@ -94,10 +88,8 @@ class MetadataWorker(QThread):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((self.peer_ip, self.port))
             
-            # Request metadata
             s.send(f"GET_METADATA{self.separator}{self.filename}".encode())
             
-            # Receive metadata
             response = s.recv(self.buffer_size).decode()
             
             if response.startswith("ERROR"):
@@ -120,11 +112,9 @@ class MetadataWorker(QThread):
                 received_bytes += len(data.encode())
             
             s.close()
-            
-            # Save metadata
+     
             metadata = json.loads(metadata_json)
             
-            # Create metadata directory if it doesn't exist
             metadata_dir = "./metadata"
             if not os.path.exists(metadata_dir):
                 os.makedirs(metadata_dir)
@@ -145,11 +135,9 @@ class MetadataWorker(QThread):
         return hashlib.md5(filename.encode()).hexdigest()
 
 
-# Continuing from previous FileClientManager class
-
 class FileClientManager:
     def __init__(self):
-        self.SERVER_IP = "172.21.12.181"  # Default server IP
+        self.SERVER_IP = "172.21.12.181" 
         self.PORT = 8000
         self.BUFFER_SIZE = 4096
         self.SEPARATOR = "<SEPARATOR>"
@@ -164,10 +152,8 @@ class FileClientManager:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((self.SERVER_IP, self.PORT))
             
-            # Request file list
             s.send("LIST".encode())
-            
-            # Receive file list
+         
             response = s.recv(self.BUFFER_SIZE).decode()
             s.close()
             
@@ -181,8 +167,6 @@ class FileClientManager:
             return f"Connection error: {str(e)}"
     
     def download_file(self, filename):
-        """Traditional file download (for compatibility)"""
-        # Start download in separate thread
         self.download_worker = DownloadWorker(
             filename, 
             self.SERVER_IP, 
@@ -194,7 +178,6 @@ class FileClientManager:
         self.download_worker.start()
     
     def download_chunk(self, peer_ip, filename, chunk_index, chunk_hash, output_dir):
-        """Download a specific chunk from a peer"""
         worker = ChunkDownloadWorker(
             peer_ip,
             filename,
@@ -205,20 +188,17 @@ class FileClientManager:
         )
         self.chunk_workers.append(worker)
         worker.start()
-        worker.wait()  # Wait for this chunk to complete
+        worker.wait()
         
-        # Check if the download was successful by looking for the file
         chunk_filename = f"{chunk_index}_{chunk_hash}"
         chunk_path = os.path.join(output_dir, chunk_filename)
         
         if os.path.exists(chunk_path):
-            # Update the metadata to include this peer
             self.update_peer_in_metadata(filename, peer_ip)
             return True
         return False
     
     def update_peer_in_metadata(self, filename, peer_ip):
-        """Update metadata to record which peer has a chunk"""
         file_hash = self.get_file_hash(filename)
         metadata_path = os.path.join("./metadata", f"{file_hash}.json")
         
@@ -239,13 +219,10 @@ class FileClientManager:
                 print(f"Error updating metadata: {e}")
     
     def request_metadata(self, filename):
-        """Request metadata for a file from the network"""
-        # Broadcast request for metadata
         message = f"METADATA_REQUEST:{filename}"
-        # This would be sent through the chat server in the main app
+
     
     def fetch_metadata(self, peer_ip, filename):
-        """Fetch metadata from a specific peer"""
         worker = MetadataWorker(
             peer_ip,
             filename,
@@ -265,7 +242,6 @@ class FileClientManager:
 
 
 class DownloadWorker(QThread):
-    """Original download worker (kept for compatibility)"""
     def __init__(self, filename, server_ip, port, separator, buffer_size, signals):
         super().__init__()
         self.filename = filename
@@ -279,11 +255,9 @@ class DownloadWorker(QThread):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((self.server_ip, self.port))
-            
-            # Request file
+         
             s.send(f"GET{self.separator}{self.filename}".encode())
-            
-            # Receive file info
+           
             response = s.recv(self.buffer_size).decode()
             
             if response.startswith("ERROR"):
@@ -294,15 +268,12 @@ class DownloadWorker(QThread):
             filename, filesize = response.split(self.separator)
             filesize = int(filesize)
             
-            # Send ready signal
             s.send("READY".encode())
-            
-            # Create download directory if it doesn't exist
+           
             download_dir = "./downloaded_files"
             if not os.path.exists(download_dir):
                 os.makedirs(download_dir)
-                
-            # Receive file data
+             
             filepath = os.path.join(download_dir, filename)
             received_bytes = 0
             
@@ -315,7 +286,6 @@ class DownloadWorker(QThread):
                     f.write(bytes_read)
                     received_bytes += len(bytes_read)
                     
-                    # Update progress
                     progress = int((received_bytes / filesize) * 100)
                     self.signals.progress_update.emit(progress)
                     
@@ -324,3 +294,5 @@ class DownloadWorker(QThread):
             
         except Exception as e:
             self.signals.error.emit(str(e))
+
+            

@@ -1,4 +1,3 @@
-# file_server.py
 import socket
 import threading
 import os
@@ -24,7 +23,6 @@ class FileServerManager:
         self.server_running = False
         self.server_thread = None
         
-        # Create necessary directories
         for directory in [self.files_dir, self.chunk_dir, self.metadata_dir]:
             if not os.path.exists(directory):
                 os.makedirs(directory)
@@ -38,7 +36,6 @@ class FileServerManager:
             file_name = os.path.basename(file_path)
             destination = os.path.join(self.files_dir, file_name)
             
-            # Copy the file to shared directory
             shutil.copy2(file_path, destination)
             self.signals.update_log.emit(f"Added file: {file_name}")
             return True
@@ -49,7 +46,6 @@ class FileServerManager:
     def add_file_reference(self, filename):
         """Add a reference to a chunked file"""
         try:
-            # Check if metadata exists
             file_hash = self.get_file_hash(filename)
             metadata_path = os.path.join(self.metadata_dir, f"{file_hash}.json")
             
@@ -57,7 +53,6 @@ class FileServerManager:
                 self.signals.update_log.emit(f"No metadata found for file: {filename}")
                 return False
             
-            # Add our IP to the metadata as a peer
             with open(metadata_path, 'r') as f:
                 metadata = json.load(f)
             
@@ -124,11 +119,9 @@ class FileServerManager:
     
     def handle_client(self, client_socket, addr):
         try:
-            # Receive command
             command = client_socket.recv(1024).decode()
             
             if command.startswith("LIST"):
-                # Send list of files from metadata directory
                 files = []
                 if os.path.exists(self.metadata_dir):
                     for metadata_file in os.listdir(self.metadata_dir):
@@ -139,8 +132,7 @@ class FileServerManager:
                                     files.append(metadata['filename'])
                             except:
                                 pass
-                
-                # Also include traditional files
+
                 if os.path.exists(self.files_dir):
                     for file in os.listdir(self.files_dir):
                         if os.path.isfile(os.path.join(self.files_dir, file)) and file not in files:
@@ -151,19 +143,15 @@ class FileServerManager:
                 self.signals.update_log.emit(f"Sent file list to {addr[0]}")
                 
             elif command.startswith("GET"):
-                # Traditional file transfer (kept for compatibility)
                 _, filename = command.split(self.SEPARATOR)
                 filepath = os.path.join(self.files_dir, filename)
                 
                 if os.path.exists(filepath):
-                    # Send file info
                     filesize = os.path.getsize(filepath)
                     client_socket.send(f"{filename}{self.SEPARATOR}{filesize}".encode())
                     
-                    # Wait for client ready signal
                     client_socket.recv(1024)
                     
-                    # Send file data
                     with open(filepath, "rb") as f:
                         while True:
                             bytes_read = f.read(self.BUFFER_SIZE)
@@ -177,11 +165,9 @@ class FileServerManager:
                     self.signals.update_log.emit(f"File {filename} not found")
             
             elif command.startswith("GET_CHUNK"):
-                # Handle chunk request
                 _, filename, chunk_index = command.split(self.SEPARATOR)
                 chunk_index = int(chunk_index)
-                
-                # Find chunk in the chunks directory
+
                 file_hash = self.get_file_hash(filename)
                 chunk_dir = os.path.join(self.chunk_dir, file_hash)
                 
@@ -189,7 +175,6 @@ class FileServerManager:
                     client_socket.send(f"ERROR{self.SEPARATOR}Chunk directory not found".encode())
                     return
                 
-                # Find the chunk file
                 chunk_file = None
                 for file in os.listdir(chunk_dir):
                     if file.startswith(f"{chunk_index}_"):
@@ -203,13 +188,10 @@ class FileServerManager:
                 chunk_path = os.path.join(chunk_dir, chunk_file)
                 chunk_size = os.path.getsize(chunk_path)
                 
-                # Send chunk info
                 client_socket.send(f"CHUNK{self.SEPARATOR}{chunk_size}".encode())
                 
-                # Wait for client ready signal
                 client_socket.recv(1024)
-                
-                # Send chunk data
+               
                 with open(chunk_path, "rb") as f:
                     while True:
                         bytes_read = f.read(self.BUFFER_SIZE)
@@ -220,7 +202,6 @@ class FileServerManager:
                 self.signals.update_log.emit(f"Sent chunk {chunk_index} of {filename} to {addr[0]}")
             
             elif command.startswith("GET_METADATA"):
-                # Handle metadata request
                 _, filename = command.split(self.SEPARATOR)
                 file_hash = self.get_file_hash(filename)
                 metadata_path = os.path.join(self.metadata_dir, f"{file_hash}.json")
@@ -229,17 +210,13 @@ class FileServerManager:
                     client_socket.send(f"ERROR{self.SEPARATOR}Metadata not found".encode())
                     return
                 
-                # Read metadata
                 with open(metadata_path, "r") as f:
                     metadata_json = f.read()
                 
-                # Send metadata size
                 client_socket.send(str(len(metadata_json.encode())).encode())
                 
-                # Wait for client ready signal
                 client_socket.recv(1024)
                 
-                # Send metadata
                 client_socket.sendall(metadata_json.encode())
                 
                 self.signals.update_log.emit(f"Sent metadata for {filename} to {addr[0]}")
@@ -253,3 +230,5 @@ class FileServerManager:
         self.SERVER = ip
         if port:
             self.PORT = port
+
+            
