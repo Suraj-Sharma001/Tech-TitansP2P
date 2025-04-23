@@ -25,7 +25,7 @@ Enable faculty to distribute code files, datasets, and messages to students in r
 ## 🧠 How It Works
 
 1. **Session Start (Teacher)**:
-   - Launches the app in "teacher mode".
+   - Launches the app.
    - Broadcasts session announcement on the local network using UDP.
 
 2. **Peer Discovery (Students)**:
