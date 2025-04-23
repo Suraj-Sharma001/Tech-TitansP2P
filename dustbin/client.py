@@ -5,10 +5,7 @@ import json
 import time
 
 def discover_servers(port=5051, timeout=3):
-    """
-    Broadcasts a discovery message on the local network to find active P2P servers.
-    Returns a list of (ip, port) tuples of discovered servers.
-    """
+   
     discovered_servers = []
     
     # Create a UDP socket for broadcasting

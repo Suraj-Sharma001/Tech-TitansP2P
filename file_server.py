@@ -12,7 +12,7 @@ class ServerSignals(QObject):
 class FileServerManager:
     def __init__(self):
         self.PORT = 8080
-        self.SERVER = socket.gethostbyname(socket.gethostname())  # Get local IP
+        self.SERVER =  "192.168.234.191"
         self.BUFFER_SIZE = 4096
         self.SEPARATOR = "<SEPARATOR>"
         
@@ -28,7 +28,6 @@ class FileServerManager:
                 os.makedirs(directory)
     
     def add_file(self, file_path):
-        """Traditional file addition (kept for compatibility)"""
         if not file_path:
             return False
             
@@ -44,7 +43,6 @@ class FileServerManager:
             return False
     
     def add_file_reference(self, filename):
-        """Add a reference to a chunked file"""
         try:
             file_hash = self.get_file_hash(filename)
             metadata_path = os.path.join(self.metadata_dir, f"{file_hash}.json")
@@ -73,7 +71,6 @@ class FileServerManager:
             return False
     
     def get_file_hash(self, filename):
-        """Create a unique identifier for a file"""
         return hashlib.md5(filename.encode()).hexdigest()
     
     def start_server(self):
@@ -100,7 +97,7 @@ class FileServerManager:
             
             while self.server_running:
                 try:
-                    server.settimeout(1.0)  # Check every second if server should still be running
+                    server.settimeout(1.0)
                     client_socket, addr = server.accept()
                     thread = threading.Thread(target=self.handle_client, args=(client_socket, addr))
                     thread.daemon = True
@@ -109,7 +106,7 @@ class FileServerManager:
                 except socket.timeout:
                     continue
                 except Exception as e:
-                    if self.server_running:  # Only log if not intentionally stopping
+                    if self.server_running:  
                         self.signals.update_log.emit(f"Error: {str(e)}")
                     break
         except Exception as e:
